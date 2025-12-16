@@ -288,8 +288,17 @@ export default function App() {
 
   const [prompt, setPrompt] = useState("");
   const [copied, setCopied] = useState(false);
+  const promptTextareaRef = useRef(null);
 
   const isHuman = selections.charCount !== "No Humans";
+
+  // Auto-resize prompt textarea to fit content
+  useEffect(() => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.style.height = 'auto';
+      promptTextareaRef.current.style.height = `${Math.max(200, promptTextareaRef.current.scrollHeight)}px`;
+    }
+  }, [prompt]);
 
   useEffect(() => {
     if (mediaType === 'video') setTargetModel('sora');
@@ -755,7 +764,7 @@ export default function App() {
           <div className="lg:col-span-4">
             <div className="sticky top-4">
               <div className={`p-[1px] rounded-xl shadow-2xl ${mediaType === 'video' ? 'bg-gradient-to-b from-orange-600 to-red-900' : 'bg-gradient-to-b from-blue-600 to-purple-900'}`}>
-                <div className="bg-[#0f0f0f] rounded-xl p-5 h-full flex flex-col">
+                <div className="bg-[#0f0f0f] rounded-xl p-5 flex flex-col">
                   <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
                      <div className="flex items-center gap-2">
                          <div className={`w-2 h-2 rounded-full ${mediaType === 'video' ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`}></div>
@@ -765,11 +774,13 @@ export default function App() {
                        {targetModel.toUpperCase()}
                      </span>
                   </div>
-                  <div className="relative flex-grow">
+                  <div className="relative min-h-[200px] max-h-[calc(100vh-300px)] overflow-auto custom-scrollbar">
                       <textarea 
+                        ref={promptTextareaRef}
                         readOnly
                         value={prompt}
-                        className="w-full h-full bg-transparent text-green-400 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
+                        className="w-full min-h-[200px] bg-transparent text-green-400 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
+                        style={{ minHeight: '200px' }}
                       />
                   </div>
                   <div className="mt-4 space-y-3">
