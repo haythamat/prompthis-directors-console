@@ -440,32 +440,47 @@ export default function App() {
     }
   }, [selections, mediaType, targetModel, appMode, isHuman]);
 
-  // Magic Writer Logic
+  // Magic Writer Logic - Uses secure backend API proxy
   const handleMagicRewrite = async () => {
     if (!magicInput.trim()) return;
     setIsGenerating(true);
     setMagicError(null);
-    const apiKey = ""; 
     const systemInstruction = `You are a professional Prompt Engineer for ${targetModel}. Rewrite user input into a detailed technical prompt.`;
 
     try {
-      if(!apiKey) throw new Error("API Key missing");
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `User Idea: ${magicInput}\n\nTarget Model: ${targetModel}\n\nRephrase:` }] }],
-            systemInstruction: { parts: [{ text: systemInstruction }] }
-          }),
-        }
-      );
-      if (!response.ok) throw new Error("Failed");
+      // Call our secure backend API proxy instead of directly calling Gemini
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ 
+            parts: [{ 
+              text: `User Idea: ${magicInput}\n\nTarget Model: ${targetModel}\n\nRephrase:` 
+            }] 
+          }],
+          systemInstruction: systemInstruction
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
-      setPrompt(data.candidates?.[0]?.content?.parts?.[0]?.text || "Error");
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (generatedText) {
+        setPrompt(generatedText);
+        setMagicError(null);
+      } else {
+        throw new Error('No response from AI');
+      }
     } catch (err) {
-      setPrompt(`(AI Enhanced ${targetModel.toUpperCase()} Prompt)\nBased on: "${magicInput}"\n\nA cinematic masterpiece featuring detailed subject matter... [Simulated AI Output]`);
+      console.error('Magic Writer error:', err);
+      setMagicError(err.message || 'Failed to generate prompt');
+      // Fallback to simulated output if API fails
+      setPrompt(`(AI Enhanced ${targetModel.toUpperCase()} Prompt)\nBased on: "${magicInput}"\n\nA cinematic masterpiece featuring detailed subject matter... [Simulated AI Output - API Error: ${err.message}]`);
     } finally {
       setIsGenerating(false);
     }
@@ -703,14 +718,30 @@ export default function App() {
                  <div className="absolute top-0 right-0 p-4 opacity-10"><Sparkles size={120} /></div>
                  <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Wand2 className="text-purple-500" /> Magic Writer</h2>
                  <p className="text-gray-400 text-sm mb-4">Describe your vision naturally. The AI will convert it into a structured technical prompt.</p>
+                 {magicError && (
+                   <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg flex items-start gap-2">
+                     <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                     <div className="flex-1">
+                       <p className="text-red-400 text-xs font-bold mb-1">API Error</p>
+                       <p className="text-red-300 text-xs">{magicError}</p>
+                       <p className="text-red-400/70 text-[10px] mt-2">Make sure GEMINI_API_KEY is set in Vercel environment variables.</p>
+                     </div>
+                   </div>
+                 )}
                  <textarea 
                    className="w-full bg-[#0a0a0a] border border-gray-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-48 mb-4 resize-none"
                    placeholder="e.g. A cyberpunk samurai crying in the rain, neon lights, very sad..."
                    value={magicInput}
-                   onChange={(e) => setMagicInput(e.target.value)}
+                   onChange={(e) => {
+                     setMagicInput(e.target.value);
+                     if (magicError) setMagicError(null);
+                   }}
                  />
                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setMagicInput("")} className="px-4 py-2 text-gray-500 hover:text-white transition-colors">Clear</button>
+                    <button onClick={() => {
+                      setMagicInput("");
+                      setMagicError(null);
+                    }} className="px-4 py-2 text-gray-500 hover:text-white transition-colors">Clear</button>
                     <button onClick={handleMagicRewrite} disabled={isGenerating || !magicInput.trim()} className={`px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${isGenerating ? 'bg-purple-900 text-gray-400' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg'}`}>
                       {isGenerating ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
                       {isGenerating ? "Rewriting..." : "Enhance with AI"}

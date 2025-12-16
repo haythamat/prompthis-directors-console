@@ -78,10 +78,46 @@ The app is pre-configured for Vercel deployment. The `vercel.json` file specifie
 - Output directory: `dist`
 - Framework: `vite`
 
-## Notes
+## API Key Configuration (Magic Writer)
 
-- Magic Writer mode requires a Google Gemini API key (currently empty in the code)
-- To enable Magic Writer, add your API key in `src/App.jsx` at line 456
+The Magic Writer feature uses Google Gemini API through a secure backend proxy. The API key is stored securely as an environment variable and never exposed to the client.
+
+### Setting up the API Key in Vercel
+
+1. **Get your Gemini API Key**:
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+
+2. **Add to Vercel Environment Variables**:
+   - Go to your Vercel project dashboard
+   - Navigate to **Settings** → **Environment Variables**
+   - Add a new variable:
+     - **Name**: `GEMINI_API_KEY`
+     - **Value**: Your Gemini API key
+     - **Environment**: Production, Preview, and Development (select all)
+   - Click **Save**
+
+3. **Redeploy** (if already deployed):
+   - Go to **Deployments** tab
+   - Click the three dots on the latest deployment
+   - Select **Redeploy**
+
+### How It Works
+
+- The API key is stored securely in Vercel's environment variables
+- Client requests go to `/api/generate-prompt` (Vercel serverless function)
+- The serverless function securely calls Gemini API with the key
+- The API key is never exposed to the browser or client-side code
+
+### Local Development
+
+For local development, create a `.env.local` file in the root directory:
+
+```bash
+GEMINI_API_KEY=your_api_key_here
+```
+
+**Note**: `.env.local` is already in `.gitignore` and will not be committed to Git.
 
 ## License
 
